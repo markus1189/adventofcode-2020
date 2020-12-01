@@ -2,11 +2,11 @@
 with pkgs;
 
 let
-  myHaskellPackages = ps: with ps; [ lens ];
+  myHaskellPackages = ps: with ps; [ lens text parsec ];
   myGhc = haskellPackages.ghcWithHoogle myHaskellPackages;
   mkDay = n:
     writeScriptBin "d${toString n}" ''
-      ${myGhc}/bin/runhaskell --ghc-arg=-Wall --ghc-arg=-Werror day${
+      ${myGhc}/bin/runhaskell --ghc-arg=-Wall day${
         toString n
       }.hs
     '';
