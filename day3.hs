@@ -5,12 +5,13 @@ module Main (main) where
 
 import           Control.Applicative ((<|>))
 import           Data.Functor.Identity
+import           Data.List (foldl')
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import qualified Math.Geometry.GridMap.Lazy as GM
-import           Math.Geometry.GridMap ((!), GridMap, BaseGrid)
 import           Math.Geometry.Grid as Grid
 import           Math.Geometry.Grid.Square (torSquareGrid)
+import           Math.Geometry.GridMap ((!), GridMap, BaseGrid)
+import qualified Math.Geometry.GridMap.Lazy as GM
 import qualified Text.Parsec as Parsec
 
 data Tile = Empty | Tree deriving (Show, Eq)
@@ -29,23 +30,32 @@ main = do
           cols = length . head $ r
           grid = torSquareGrid rows cols
           gridMap = GM.lazyGridMapIndexed grid (concat r)
-      print . walk $ gridMap
+          slopes = [ (1,1)
+                   , (1,3) -- 1st part
+                   , (1,5)
+                   , (1,7)
+                   , (2,1)
+                   ]
+      print $ foldl' (*) 1 $ fmap (walk gridMap) slopes
 
 walk :: (FiniteGrid (gm Tile),
          GridMap gm Tile,
          Index (BaseGrid gm Tile) ~ (Int, Int), Size (gm Tile) ~ (Int, Int))
      => gm Tile
+     -> (Int, Int)
      -> Int
-walk gm = go (0, 0) 0
+walk gm (deltaRow, deltaColumn) = go (0, 0) 0
   where (maxRow, _) = Grid.size gm
         go (row, col) trees =
-          if row == maxRow
+          if row >= maxRow
           then trees
-          else let newPos = (row + 1, col + 3)
+          else let newPos = newRow `seq` newCol `seq` (newRow, newCol)
+                   newRow = row + deltaRow
+                   newCol = col + deltaColumn
                    trees' = if isTree (gm `wrappingLookup` (row, col))
                             then trees + 1
                             else trees
-               in go newPos trees'
+               in newPos `seq` trees' `seq` go newPos trees'
 
 parser :: Parsec.ParsecT T.Text u Identity [[((Int, Int), Tile)]]
 parser =
