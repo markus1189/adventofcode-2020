@@ -23,7 +23,7 @@ solvePart1 :: [FlightGroup] -> Int
 solvePart1 = getSum . foldMap (Sum . distinctAnswers) -- 6565
 
 solvePart2 :: [FlightGroup] -> Int
-solvePart2 = getSum . foldMap (Sum . questionsAllAnswered) -- 6565
+solvePart2 = getSum . foldMap (Sum . questionsAllAnswered) -- 3137
 
 questionsAllAnswered :: FlightGroup -> Int
 questionsAllAnswered (FlightGroup as) =
