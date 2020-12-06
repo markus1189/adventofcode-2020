@@ -1,10 +1,11 @@
+import           Data.List (foldl')
 import           Data.Monoid (Sum(..))
-import qualified Data.Text.IO as TIO
-import qualified Text.Parsec as Parsec
-import           Text.Parsec (Parsec)
-import           Data.Text (Text)
 import           Data.Set (Set)
 import qualified Data.Set as Set
+import           Data.Text (Text)
+import qualified Data.Text.IO as TIO
+import           Text.Parsec (Parsec)
+import qualified Text.Parsec as Parsec
 
 newtype Answers = Answers [Char] deriving (Show, Eq, Ord)
 newtype FlightGroup = FlightGroup [Answers] deriving (Show, Eq, Ord)
@@ -16,14 +17,24 @@ main = do
     Left  e      -> error (show e)
     Right fgs -> do
       print $ solvePart1 fgs
+      print $ solvePart2 fgs
 
 solvePart1 :: [FlightGroup] -> Int
 solvePart1 = getSum . foldMap (Sum . distinctAnswers) -- 6565
 
+solvePart2 :: [FlightGroup] -> Int
+solvePart2 = getSum . foldMap (Sum . questionsAllAnswered) -- 6565
+
+questionsAllAnswered :: FlightGroup -> Int
+questionsAllAnswered (FlightGroup as) =
+  Set.size $ foldl' Set.intersection (Set.fromList ['a'..'z']) $ map answersToSet as
+
 distinctAnswers :: FlightGroup -> Int
-distinctAnswers (FlightGroup as) = Set.size $ foldMap toSet as
-  where toSet :: Answers -> Set Char
-        toSet (Answers vs) = Set.fromList vs
+distinctAnswers (FlightGroup as) =
+  Set.size $ foldl' Set.union Set.empty $ map answersToSet as
+
+answersToSet  :: Answers -> Set Char
+answersToSet (Answers vs) = Set.fromList vs
 
 parser :: Parsec.Parsec Text () [FlightGroup]
 parser = groupParser `Parsec.sepEndBy1` Parsec.newline
