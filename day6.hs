@@ -14,7 +14,7 @@ main :: IO ()
 main = do
   input <- TIO.getContents
   case Parsec.runParser parser () "stdin" input of
-    Left  e      -> error (show e)
+    Left  e   -> error (show e)
     Right fgs -> do
       print $ solvePart1 fgs
       print $ solvePart2 fgs
@@ -27,7 +27,7 @@ solvePart2 = getSum . foldMap (Sum . questionsAllAnswered) -- 6565
 
 questionsAllAnswered :: FlightGroup -> Int
 questionsAllAnswered (FlightGroup as) =
-  Set.size $ foldl' Set.intersection (Set.fromList ['a'..'z']) $ map answersToSet as
+  Set.size $ foldl' Set.intersection (Set.fromList possibleAnswers) $ map answersToSet as
 
 distinctAnswers :: FlightGroup -> Int
 distinctAnswers (FlightGroup as) =
@@ -40,10 +40,13 @@ parser :: Parsec.Parsec Text () [FlightGroup]
 parser = groupParser `Parsec.sepEndBy1` Parsec.newline
 
 answerParser :: Parsec Text () Char
-answerParser = Parsec.oneOf ['a'..'z']
+answerParser = Parsec.oneOf possibleAnswers
 
 lineParser :: Parsec Text () Answers
 lineParser = Answers <$> Parsec.many1 answerParser <* Parsec.newline
 
 groupParser :: Parsec Text () FlightGroup
 groupParser = FlightGroup <$> Parsec.many1 lineParser
+
+possibleAnswers :: [Char]
+possibleAnswers = ['a'..'z']
