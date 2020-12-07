@@ -33,17 +33,23 @@ main = do
         print (solvePart2 (fst tgt) graph - 1) -- 7872
 
 solvePart1 :: Graph.Node -> Gr ColoredBag Int -> Int
-solvePart1 shinyGoldBag graph = Set.size . Set.fromList . mapMaybe (Graph.lab graph) . mapMaybe listToMaybe $ filter ((>1) . length) $ catMaybes paths
-  where paths = map (\node -> SP.sp node shinyGoldBag graph) $ Graph.nodes graph
+solvePart1 shinyGoldBag graph =
+  Set.size .
+  Set.fromList .
+  mapMaybe (Graph.lab graph) .
+  mapMaybe listToMaybe .
+  filter ((>1) . length) $
+  catMaybes paths
+  where paths = map (\node -> SP.sp node shinyGoldBag graph)
+                    (Graph.nodes graph)
 
 solvePart2 :: Graph.Node -> Gr ColoredBag Int -> Int
 solvePart2 node graph = case Graph.match node graph of
   (Nothing, _) -> 0
   (Just ctx, graph') ->
-    if Graph.isEmpty graph'
-    then 0
-    else let out = Graph.out' ctx
-         in foldl' (+) 1 $ map (\case (_,to,label) -> label * solvePart2 to graph) out
+    foldl' (+) 1 $
+    map (\case (_,to,label) -> label * solvePart2 to graph')
+        (Graph.out' ctx)
 
 shinyGold :: ColoredBag
 shinyGold = ColoredBag "shiny" "gold"
@@ -78,10 +84,16 @@ quantityBagParser = do
   return (n,bag)
 
 bagParser :: Parsec Text () ColoredBag
-bagParser = colorParser <* Parsec.space <* Parsec.string "bag" <* Parsec.optional (Parsec.char 's')
+bagParser =
+  colorParser <*
+  Parsec.space <*
+  Parsec.string "bag" <*
+  Parsec.optional (Parsec.char 's')
 
 colorParser :: Parsec Text () ColoredBag
-colorParser = ColoredBag <$> Parsec.many1 Parsec.lower <*> (Parsec.space *> Parsec.many1 Parsec.lower)
+colorParser =
+  ColoredBag <$> Parsec.many1 Parsec.lower
+             <*> (Parsec.space *> Parsec.many1 Parsec.lower)
 
 noOtherBags :: Parsec Text () ()
 noOtherBags = void $ Parsec.string "no other bags"
