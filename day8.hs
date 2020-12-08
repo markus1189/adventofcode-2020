@@ -3,13 +3,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-import           Control.Monad.State (MonadState, gets, evalState, execState, runState)
+import           Control.Monad.State (MonadState, gets, execState, runState)
 import           Control.Monad (void)
 import           Control.Lens.TH
 import           Control.Lens.Operators
-import           Control.Lens (view, use, _2)
+import           Control.Lens (view, use, _2, ix, at)
 import           Data.List (find)
-import           Data.Functor (($>))
 import           Control.Applicative ((<|>))
 import qualified Data.Text.IO as TIO
 import qualified Text.Parsec as Parsec
@@ -17,6 +16,8 @@ import           Text.Parsec (Parsec)
 import           Data.Text (Text)
 import           Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 newtype Offset = Offset Int deriving (Show, Eq, Num)
 
@@ -27,7 +28,10 @@ data Instr = Acc Int
            | Nop Offset
            deriving (Show, Eq)
 
-newtype Program = Program [(Address, Instr)] deriving (Show, Eq)
+data Program = Program { _programInstructions :: Map Address Instr
+                       , _programTerminateAddress :: Address
+                       } deriving (Show, Eq)
+makeLenses ''Program
 
 data EvalState = EvalState { _evalStatePointer :: Address
                            , _evalStateAcc :: Int
@@ -41,7 +45,10 @@ jump :: Offset -> Address -> Address
 jump (Offset o) (Address a) = Address (a + o)
 
 terminates :: Address -> Program -> Bool
-terminates a (Program is) = fst (last is) + 1 == a
+terminates a p = p ^. programTerminateAddress == a
+
+terminateAddress :: Map Address Instr -> Address
+terminateAddress m = if Map.null m then 0 else maximum $ Map.keys m
 
 main :: IO ()
 main = do
@@ -58,17 +65,14 @@ initialState = EvalState 0 0 Set.empty
 solvePart1 :: Program -> Int
 solvePart1 p = view evalStateAcc $ execState (executeProgram p) initialState
 
-solvePart2 :: Program -> Int
-solvePart2 p@(Program is) =
+solvePart2 :: Program -> Maybe Int
+solvePart2 p =
   view (_2 . evalStateAcc) <$>
   find (\case (r,_) -> r == Terminate) (map (flip runState initialState . executeProgram) programs)
-  where programs = map (\case (addr, _) -> modifyProgram addr p) is
+  where programs = map (\case (addr, _) -> modifyProgram addr p) (Map.toList $ p ^. programInstructions)
 
 modifyProgram :: Address -> Program -> Program
-modifyProgram addr (Program is) = Program $ map go is
-  where go (a,i) = if a == addr
-                   then (a, flipInstruction i)
-                   else (a, i)
+modifyProgram addr p = p & programInstructions . ix addr %~ flipInstruction
 
 flipInstruction :: Instr -> Instr
 flipInstruction acc@(Acc _) = acc
@@ -96,7 +100,7 @@ atKnownAddress :: EvalState -> Bool
 atKnownAddress = Set.member <$> view evalStatePointer <*> view evalStateSeen
 
 getInstruction :: Program -> Address -> Maybe Instr
-getInstruction (Program addrs) a = snd <$> find (\case (addr,_) -> addr == a) addrs
+getInstruction p a = p ^. programInstructions . at a
 
 evalInstr :: MonadState EvalState m => Instr -> m ()
 evalInstr (Acc i) = (evalStatePointer %= jump 1) *> (evalStateAcc += i)
@@ -104,7 +108,9 @@ evalInstr (Jmp o) = evalStatePointer %= jump o
 evalInstr (Nop _) = evalStatePointer %= jump 1
 
 parser :: Parsec Text () Program
-parser = Program . zip [0..] <$> Parsec.many1 (instrParser <* Parsec.newline) <* Parsec.eof
+parser = do
+  m <- Map.fromList . zip [0..] <$> Parsec.many1 (instrParser <* Parsec.newline) <* Parsec.eof
+  pure $ Program m (terminateAddress m)
 
 signedNumParser :: Parsec Text () Int
 signedNumParser = (*) <$> sign <*> num
