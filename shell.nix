@@ -2,7 +2,18 @@
 with pkgs;
 
 let
-  myHaskellPackages = ps: with ps; [ lens text parsec grid fgl pointedlist lens ];
+  myHaskellPackages = ps:
+    with ps; [
+      fgl
+      grid
+      lens
+      lens
+      parsec
+      pointedlist
+      tasty
+      tasty-hspec
+      text
+    ];
   myGhc = haskellPackages.ghcWithHoogle myHaskellPackages;
   mkDay = n:
     writeScriptBin "d${toString n}" ''
