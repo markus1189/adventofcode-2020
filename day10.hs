@@ -3,21 +3,16 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-import           Data.Bits (shiftL)
-import           Data.Ord (comparing)
 import           Data.Function ( on )
-import           Data.List ( sort , maximumBy, tails, foldl')
+import           Data.List ( sort, tails, foldl')
 import qualified Data.Text.IO as TIO
 import qualified Text.Parsec as Parsec
 import           Text.Parsec ( Parsec )
 import           Data.Text ( Text )
 import           Test.Tasty
 import           Test.Tasty.Hspec
-import           Data.Map (Map)
 import qualified Data.Map as Map
-import qualified Data.Tree as Tree
-import           Debug.Trace (traceShowId)
-import           Debug.Trace (traceShow)
+
 newtype Adapter = Adapter { adapterJolt :: Int
                           } deriving (Show, Eq, Ord)
 
