@@ -55,7 +55,7 @@ main :: IO ()
 main = do
   input <- TIO.getContents
   print $ solvePart1 . parseInput $ input -- 2427
-  print $ solvePart2 . parseInput $ input
+  print $ solvePart2 . parseInput $ input -- 2199
 
 solvePart1 :: LGridMap RectSquareGrid Tile -> Maybe Int
 solvePart1 = genericSolve mkNeighbors
@@ -70,17 +70,16 @@ genericSolve findNbs gm = do
   SomeNat r <- someNatVal rows
   SomeNat c <- someNatVal cols
   let gridStore = mkStore $ mkFixedGridMap r c gm
-      (FixedGridMap gm', _) = fixpoint findNbs 0 gridStore
+      FixedGridMap gm' = fixpoint findNbs gridStore
   pure $ Map.foldl' (\acc x -> if x == Occupied then acc + 1 else acc) 0 $ GridMap.toMap gm'
   where (rows, cols) = (\case (x,y) -> (fromIntegral x, fromIntegral y)) $ Grid.size gm
 
 fixpoint :: forall r c. (KnownNat r, KnownNat c)
          => (LGridMap RectSquareGrid Tile -> (Int, Int) -> [(Int, Int)])
-         -> Int
          -> Store (FixedGridMap r c) Tile
-         -> (FixedGridMap r c Tile,  Int)
-fixpoint findNbs x s@(StoreT (Identity fgm) _) =
-  if fgm == fgm' then (fgm, x) else fixpoint findNbs (x+1) s'
+         -> FixedGridMap r c Tile
+fixpoint findNbs s@(StoreT (Identity fgm) _) =
+  if fgm == fgm' then fgm else fixpoint findNbs s'
   where s'@(StoreT (Identity fgm') _) = extend applyRule s
 
 offsets :: Int -> Int -> [(Int, Int)]
