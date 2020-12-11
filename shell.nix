@@ -4,12 +4,15 @@ with pkgs;
 let
   myHaskellPackages = ps:
     with ps; [
+      adjunctions
+      comonad
       fgl
       grid
       lens
       lens
       parsec
       pointedlist
+      split
       tasty
       tasty-hspec
       text
