@@ -7,21 +7,17 @@ import qualified Text.Parsec as Parsec
 import           Text.Parsec (Parsec)
 import           Data.Text (Text)
 
-import           Test.Tasty
-import           Test.Tasty.Hspec
-
 main :: IO ()
 main = do
-  ts <- testSpec "AdventOfCode" $ do
-    it "works on stdin" $ do
-      input <- TIO.getContents
-      let solution = solve . parseInput $ input
-          expected = ()
-      solution `shouldBe` expected
-  defaultMain ts
+  input <- TIO.getContents
+  print $ solvePart1 . parseInput $ input
+  print $ solvePart2 . parseInput $ input
 
-solve :: _ -> _
-solve _ = ()
+solvePart1 :: _ -> _
+solvePart1 _ = ()
+
+solvePart2 :: _ -> _
+solvePart2 _ = ()
 
 parseInput :: Text -> _
 parseInput input =
