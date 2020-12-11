@@ -7,8 +7,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-import           Debug.Trace (traceShowM, traceShowId, traceShow)
-import           Data.List.Split (chunksOf)
 import           Control.Monad (guard)
 import qualified Data.Text.IO as TIO
 import qualified Text.Parsec as Parsec
@@ -16,7 +14,7 @@ import           Data.Proxy
 import           Text.Parsec (Parsec)
 import           Data.Text (Text)
 import qualified Math.Geometry.Grid as Grid
-import           Data.List (intercalate)
+import           Data.List (unfoldr)
 import qualified Math.Geometry.GridMap as GridMap
 import           Math.Geometry.GridMap.Lazy (lazyGridMap, LGridMap)
 import           Math.Geometry.Grid.Square (rectSquareGrid, RectSquareGrid)
@@ -26,7 +24,6 @@ import           GHC.TypeLits
 import           Control.Comonad.Representable.Store (StoreT(..), Store, store, experiment)
 import           Control.Comonad (extract, extend)
 import           Data.Functor.Identity (Identity(..))
-import           Data.Map (Map)
 import qualified Data.Map as Map
 
 data Tile = Floor | EmptySeat | Occupied deriving (Show, Eq)
@@ -46,7 +43,7 @@ instance forall r c. (KnownNat r, KnownNat c) => Representable (FixedGridMap r c
   tabulate f = let rows = fromIntegral $ natVal (Proxy @r)
                    cols = fromIntegral $ natVal (Proxy @c)
                    grid = rectSquareGrid rows cols
-                   gridMap = lazyGridMap grid . map f $ [ (row, col) | row <- [0..(rows-1)], col <- [0..(cols-1)]]
+                   gridMap = lazyGridMap grid . map f $ offsets rows cols
                in FixedGridMap gridMap
 
   index (FixedGridMap g) (row,col) =
@@ -57,51 +54,70 @@ instance forall r c. (KnownNat r, KnownNat c) => Representable (FixedGridMap r c
 main :: IO ()
 main = do
   input <- TIO.getContents
-  print $ solvePart1 . parseInput $ input
+  print $ solvePart1 . parseInput $ input -- 2427
   print $ solvePart2 . parseInput $ input
 
-showFixedGridMap (FixedGridMap gm) = intercalate "\n" $ chunksOf cols $ map (showTile . (gm GridMap.!)) [(row, col) | row <- [0..(rows-1)], col <- [0..(cols-1)]]
-  where (rows, cols) = (\case (x,y) -> (fromIntegral x, fromIntegral y)) $ Grid.size gm
+solvePart1 :: LGridMap RectSquareGrid Tile -> Maybe Int
+solvePart1 = genericSolve mkNeighbors
 
-showTile Floor = '.'
-showTile EmptySeat = 'L'
-showTile Occupied = '#'
+solvePart2 :: LGridMap RectSquareGrid Tile -> Maybe Int
+solvePart2 = genericSolve visibleNeighbors
 
-solvePart1 :: LGridMap RectSquareGrid Tile -> Maybe _
-solvePart1 gm = do
+genericSolve :: (LGridMap RectSquareGrid Tile -> (Int, Int) -> [(Int, Int)])
+             -> LGridMap RectSquareGrid Tile
+             -> Maybe Int
+genericSolve findNbs gm = do
   SomeNat r <- someNatVal rows
   SomeNat c <- someNatVal cols
   let gridStore = mkStore $ mkFixedGridMap r c gm
-      (FixedGridMap gm', n) = fixpoint 0 gridStore
-  pure $ (n, Map.foldl' (\acc x -> if x == Occupied then acc + 1 else acc) 0 $ GridMap.toMap gm')
+      (FixedGridMap gm', _) = fixpoint findNbs 0 gridStore
+  pure $ Map.foldl' (\acc x -> if x == Occupied then acc + 1 else acc) 0 $ GridMap.toMap gm'
   where (rows, cols) = (\case (x,y) -> (fromIntegral x, fromIntegral y)) $ Grid.size gm
 
-fixpoint :: forall r c. (KnownNat r, KnownNat c) => Int -> Store (FixedGridMap r c) Tile -> (FixedGridMap r c Tile,  Int)
-fixpoint x s@(StoreT (Identity fgm) _) = if fgm == fgm' then (fgm, x) else fixpoint (x+1) s'
+fixpoint :: forall r c. (KnownNat r, KnownNat c)
+         => (LGridMap RectSquareGrid Tile -> (Int, Int) -> [(Int, Int)])
+         -> Int
+         -> Store (FixedGridMap r c) Tile
+         -> (FixedGridMap r c Tile,  Int)
+fixpoint findNbs x s@(StoreT (Identity fgm) _) =
+  if fgm == fgm' then (fgm, x) else fixpoint findNbs (x+1) s'
   where s'@(StoreT (Identity fgm') _) = extend applyRule s
 
-solvePart2 :: LGridMap RectSquareGrid Tile -> _
-solvePart2 _ = ()
+offsets :: Int -> Int -> [(Int, Int)]
+offsets rows cols = [ (row, col) | row <- [0..(rows-1)], col <- [0..(cols-1)]]
 
 applyRule :: forall r c. (KnownNat r, KnownNat c) => Store (FixedGridMap r c) Tile -> Tile
-applyRule fgm = case focus of
+applyRule fgm@(StoreT (Identity (FixedGridMap gm)) _) = case focus of
   EmptySeat -> if Occupied `notElem` nbs then Occupied else focus
   Occupied -> if (>3) . length . filter (== Occupied) $ nbs then EmptySeat else focus
   _ -> focus
-  where nbs = experiment (\input -> mkNeighbors (fromIntegral $ natVal (Proxy @r), fromIntegral $ natVal (Proxy @r)) $ input) fgm
+  where nbs = experiment (mkNeighbors gm) fgm
         focus = extract fgm
 
 mkStore :: (KnownNat r, KnownNat c) => FixedGridMap r c Tile -> Store (FixedGridMap r c) Tile
 mkStore (FixedGridMap gm) = store (\case (r,c) -> gm GridMap.! (r,c)) (0,0)
 
-mkNeighbors :: (Int, Int) -> (Int, Int) -> [(Int, Int)]
-mkNeighbors (rows, cols) (r, c) = do
+mkNeighbors :: LGridMap RectSquareGrid Tile -> (Int, Int) -> [(Int, Int)]
+mkNeighbors gm (r, c) = do
+  let (rows, cols) = Grid.size gm
   dr <- [-1, 0, 1]
   dc <- [-1, 0, 1]
   guard $ (dr,dc) /= (0,0)
   let x@(r', c') = (r + dr, c + dc)
   guard $ r' >= 0 && r' < rows && c' < cols && c' >= 0
   pure x
+
+visibleNeighbors :: LGridMap RectSquareGrid Tile -> (Int, Int) -> [(Int, Int)]
+visibleNeighbors gm (r, c) = concatMap (pick . peek) [(x,y) | x <- [-1, 0, 1], y <- [-1, 0, 1], (x,y) /= (0,0)]
+  where peek (dx, dy) = unfoldr (\case (r', c') -> if gm `Grid.contains` (r', c')
+                                                   then Just (((r', c'), gm GridMap.! (r', c')), (r' + dx, c' + dy))
+                                                   else Nothing)
+                                (r + dx, c + dy)
+        pick [] = []
+        pick [(crd,_)] = [crd]
+        pick ((_,Floor):cs) = pick cs
+        pick ((crd, EmptySeat):_) = [crd]
+        pick ((crd, Occupied):_) = [crd]
 
 parseInput :: Text -> LGridMap RectSquareGrid Tile
 parseInput input =
