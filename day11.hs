@@ -58,37 +58,39 @@ main = do
   print $ solvePart2 . parseInput $ input -- 2199
 
 solvePart1 :: LGridMap RectSquareGrid Tile -> Maybe Int
-solvePart1 = genericSolve mkNeighbors
+solvePart1 = genericSolve 4 mkNeighbors
 
 solvePart2 :: LGridMap RectSquareGrid Tile -> Maybe Int
-solvePart2 = genericSolve visibleNeighbors
+solvePart2 = genericSolve 5 visibleNeighbors
 
-genericSolve :: (LGridMap RectSquareGrid Tile -> (Int, Int) -> [(Int, Int)])
+genericSolve :: Int
+             -> (LGridMap RectSquareGrid Tile -> (Int, Int) -> [(Int, Int)])
              -> LGridMap RectSquareGrid Tile
              -> Maybe Int
-genericSolve findNbs gm = do
+genericSolve n findNbs gm = do
   SomeNat r <- someNatVal rows
   SomeNat c <- someNatVal cols
   let gridStore = mkStore $ mkFixedGridMap r c gm
-      FixedGridMap gm' = fixpoint findNbs gridStore
+      FixedGridMap gm' = fixpoint n findNbs gridStore
   pure $ Map.foldl' (\acc x -> if x == Occupied then acc + 1 else acc) 0 $ GridMap.toMap gm'
   where (rows, cols) = (\case (x,y) -> (fromIntegral x, fromIntegral y)) $ Grid.size gm
 
 fixpoint :: forall r c. (KnownNat r, KnownNat c)
-         => (LGridMap RectSquareGrid Tile -> (Int, Int) -> [(Int, Int)])
+         => Int
+         -> (LGridMap RectSquareGrid Tile -> (Int, Int) -> [(Int, Int)])
          -> Store (FixedGridMap r c) Tile
          -> FixedGridMap r c Tile
-fixpoint findNbs s@(StoreT (Identity fgm) _) =
-  if fgm == fgm' then fgm else fixpoint findNbs s'
-  where s'@(StoreT (Identity fgm') _) = extend applyRule s
+fixpoint n findNbs s@(StoreT (Identity fgm) _) =
+  if fgm == fgm' then fgm else fixpoint n findNbs s'
+  where s'@(StoreT (Identity fgm') _) = extend (applyRule n) s
 
 offsets :: Int -> Int -> [(Int, Int)]
 offsets rows cols = [ (row, col) | row <- [0..(rows-1)], col <- [0..(cols-1)]]
 
-applyRule :: forall r c. (KnownNat r, KnownNat c) => Store (FixedGridMap r c) Tile -> Tile
-applyRule fgm@(StoreT (Identity (FixedGridMap gm)) _) = case focus of
+applyRule :: forall r c. (KnownNat r, KnownNat c) => Int -> Store (FixedGridMap r c) Tile -> Tile
+applyRule n fgm@(StoreT (Identity (FixedGridMap gm)) _) = case focus of
   EmptySeat -> if Occupied `notElem` nbs then Occupied else focus
-  Occupied -> if (>3) . length . filter (== Occupied) $ nbs then EmptySeat else focus
+  Occupied -> if (>=n) . length . filter (== Occupied) $ nbs then EmptySeat else focus
   _ -> focus
   where nbs = experiment (mkNeighbors gm) fgm
         focus = extract fgm
