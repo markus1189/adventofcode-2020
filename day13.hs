@@ -5,8 +5,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 import           Control.Applicative ((<|>))
-import           Data.List (sort, find)
-import           Data.Maybe (catMaybes, isJust)
+import           Data.List (find, foldl')
+import           Data.Maybe (catMaybes, isJust, mapMaybe)
 import           Data.Text (Text)
 import qualified Data.Text.IO as TIO
 import           Text.Parsec (Parsec)
@@ -16,9 +16,9 @@ data Input = Input { _inputEarliestDeparture :: Timestamp
                    , _inputBusIds :: [Maybe BusId]
                    } deriving (Show, Eq)
 
-newtype BusId = BusId Int deriving (Show, Eq, Ord)
+newtype BusId = BusId { getBusId :: Integer} deriving (Show, Eq, Ord)
 
-newtype Timestamp = Timestamp Int deriving (Show, Eq, Ord, Enum)
+newtype Timestamp = Timestamp Integer deriving (Show, Eq, Ord, Enum)
 
 stopsAt :: BusId -> Timestamp -> Bool
 stopsAt (BusId i) (Timestamp t) = t `mod` i == 0
@@ -26,14 +26,14 @@ stopsAt (BusId i) (Timestamp t) = t `mod` i == 0
 main :: IO ()
 main = do
   input <- TIO.getContents
-  print $ parseInput input
-  print $ solvePart1 . parseInput $ input
-  print $ solvePart2 . parseInput $ input
+  print (labelledBusIds . _inputBusIds $ parseInput input)
+  print $ solvePart1 . parseInput $ input -- 161
+  print $ solvePart2 . parseInput $ input -- 213890632230818
 
-calcSolution :: Timestamp -> (Timestamp, BusId) -> Int
+calcSolution :: Timestamp -> (Timestamp, BusId) -> Integer
 calcSolution (Timestamp start) (Timestamp actual, BusId i) = (actual - start) * i
 
-solvePart1 :: Input -> Maybe Int
+solvePart1 :: Input -> Maybe Integer
 solvePart1 (Input earliestDep ids) = do
   (t, maybeBusId) <- result
   busId <- maybeBusId
@@ -44,8 +44,29 @@ solvePart1 (Input earliestDep ids) = do
                                     $ catMaybes ids)
                $ [earliestDep..]
 
-solvePart2 :: Input -> _
-solvePart2 _ = ()
+solvePart2 :: Input -> Integer
+solvePart2 (Input _ bs) = searchSolution lbids (getBusId . snd . head $ lbids) 1
+  where lbids = labelledBusIds bs
+
+search :: Integer -> Integer -> [(Integer, BusId)] -> Maybe Integer
+search startValue multipleOf constraints = find (isSolution constraints) $ iterate (+multipleOf) startValue
+
+searchSolution :: [(Integer, BusId)] -> Integer -> Int -> Integer
+searchSolution lbids x n = if n == length lbids - 1
+                           then intermediateSolution
+                           else searchSolution lbids intermediateSolution (n+1)
+  where is = map (getBusId . snd) lbids
+        Just intermediateSolution = search x (lcms (take n is)) (take (n+1) lbids)
+
+labelledBusIds :: [Maybe BusId] -> [(Integer, BusId)]
+labelledBusIds = mapMaybe (\case (i, mb) -> (i,) <$> mb) . zip [0..]
+
+lcms :: Foldable f => f Integer -> Integer
+lcms = foldl' lcm 1
+
+isSolution :: [(Integer, BusId)] -> Integer -> Bool
+isSolution busIdsWithIndex t =
+  all (\case (i, BusId b) -> ((t+i) `mod` b == 0)) busIdsWithIndex
 
 parseInput :: Text -> Input
 parseInput input =
@@ -60,9 +81,9 @@ parser = Input
      <* Parsec.newline
      <* Parsec.eof
   where depParser = Timestamp <$> numberParser <* Parsec.newline
-        idsParser = map (fmap BusId) . sort
+        idsParser = map (fmap BusId)
                 <$> Parsec.sepBy (Just <$> numberParser <|> Nothing <$ Parsec.char 'x')
                                  (Parsec.char ',')
 
-numberParser :: Parsec Text () Int
-numberParser = read @Int <$> Parsec.many1 Parsec.digit
+numberParser :: Parsec Text () Integer
+numberParser = read @Integer <$> Parsec.many1 Parsec.digit
