@@ -23,8 +23,8 @@ main :: IO ()
 main = do
   input <- TIO.getContents
   print (parseInput input)
-  print $ solvePart1 . parseInput $ input
-  print $ solvePart2 . parseInput $ input
+  print $ solvePart1 . parseInput $ input -- 1015
+  print $ solvePart2 . parseInput $ input -- 201
 
 initialMemory :: [Integer] -> Memory
 initialMemory is =

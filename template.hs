@@ -1,11 +1,12 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+
 import           Control.Applicative ((<|>))
-import qualified Data.Text.IO as TIO
-import qualified Text.Parsec as Parsec
-import           Text.Parsec (Parsec)
 import           Data.Text (Text)
+import qualified Data.Text.IO as TIO
+import           Text.Parsec (Parsec)
+import qualified Text.Parsec as Parsec
 
 main :: IO ()
 main = do
@@ -25,5 +26,5 @@ parseInput input =
     Left  e -> error (show e)
     Right r -> r
 
-parser :: Parsec.Parsec Text () _
+parser :: Parsec Text () _
 parser = pure ()
