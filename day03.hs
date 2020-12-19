@@ -36,6 +36,7 @@ main = do
                    , (1,7)
                    , (2,1)
                    ]
+      print $ walk gridMap (1,3)
       print $ foldl' (*) 1 $ fmap (walk gridMap) slopes
 
 walk :: (FiniteGrid (gm Tile),
