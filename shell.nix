@@ -19,7 +19,8 @@ let
     ];
   myGhc = haskellPackages.ghcWithHoogle myHaskellPackages;
   mkDay = n:
-    writeScriptBin "d${toString n}" ''
-      ${myGhc}/bin/runhaskell --ghc-arg=-Wall day${toString n}.hs
+    let n' = if n < 10 then "0${toString n}" else toString n;
+    in writeScriptBin "d${n'}" ''
+      ${myGhc}/bin/runhaskell --ghc-arg=-Wall day${n'}.hs
     '';
 in mkShell { buildInputs = [ myGhc ] ++ map mkDay (lib.range 1 24); }
