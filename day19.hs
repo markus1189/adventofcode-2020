@@ -69,7 +69,7 @@ solvePart1 (Input rules strings) = length $ filter (check p) (zip @Int [1..] str
 solvePart2 :: Input -> Int
 solvePart2 (Input originalRules strings) = length $ filter (check p) (zip @Int [1..] strings)
   where p = toParser rules' r0 <* Parsec.eof
-        r0 = buildRule8And11
+        r0 = buildRule8And11 (maximum $ map length strings)
         rules' = Map.delete 8 . Map.delete 11 $ originalRules
 
 unfoldRule8 :: [RuleExpr]
@@ -78,11 +78,11 @@ unfoldRule8 = unfoldr (\s -> Just (s, RuleAnd s (RuleLookup 42))) (RuleLookup 42
 unfoldRule11 :: [RuleExpr]
 unfoldRule11 = unfoldr (\case (pref,suf) -> Just (ruleAll1 (pref ++ suf), (RuleLookup 42 : pref, RuleLookup 31 : suf))) ([RuleLookup 42], [RuleLookup 31])
 
-buildRule8And11 :: RuleExpr
-buildRule8And11 = ruleAny1 combinations
+buildRule8And11 :: Int -> RuleExpr
+buildRule8And11 maxLength = ruleAny1 combinations
   where combinations = do
-          r8 <- take 94 unfoldRule8 -- longest input is 96
-          r11 <- take 46 unfoldRule11 -- 94 / 2 - 1
+          r8 <- take (maxLength - 2) unfoldRule8
+          r11 <- take ((maxLength - 1) `div` 2) unfoldRule11
           pure (RuleAnd r8 r11)
 
 parseInput :: Text -> Input
