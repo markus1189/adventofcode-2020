@@ -22,7 +22,7 @@ main = do
   print $ genericSolve . parseInput operatorTable1 $ input
   print $ genericSolve . parseInput operatorTable2 $ input -- 34646237037193
 
-genericSolve :: [Expr] -> Sum Integer
+genericSolve :: [Expr] -> Integer
 genericSolve = getSum . foldMap (Sum . eval)
 
 eval :: Expr -> Integer

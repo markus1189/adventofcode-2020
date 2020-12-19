@@ -1,11 +1,9 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
-import Control.Lens (view,_2)
 import           Control.Applicative ((<|>))
-import           Control.Lens.TH
+import           Control.Lens (view,_2,to)
 import           Data.List (foldl', transpose, isPrefixOf, partition)
 import           Data.Text (Text)
 import qualified Data.Text.IO as TIO
@@ -22,7 +20,6 @@ data Constraint = Constraint { _cName :: String
                              , _cFirstInterval :: Interval
                              , _cSecondInterval :: Interval
                              } deriving (Show, Eq, Ord)
-makeLenses ''Constraint
 
 main :: IO ()
 main = do
@@ -37,7 +34,7 @@ solvePart2 :: ([Constraint], Ticket, [Ticket]) -> Int
 solvePart2 (cs, Ticket myTicket, ts) =
   foldl' (\acc i -> acc * myTicket !! i) 1
   . map fst
-  . filter (("departure" `isPrefixOf`) . view (_2 . cName))
+  . filter (("departure" `isPrefixOf`) . view (_2 . to _cName))
   $ orderedConstraints
   where validTickets = filter (checkTicket cs) ts
         orderedConstraints = solve $ zip @Int [0..] $ figureOutConstraints cs validTickets

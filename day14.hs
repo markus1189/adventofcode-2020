@@ -1,8 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
-import Debug.Trace
 import Data.List (foldl')
 import           Control.Applicative ((<|>))
 import           Data.Bits (testBit)
@@ -101,7 +99,7 @@ bitsToInteger bs =
                   then 2 ^ fst indexedBit
                   else 0)
         0
-        (zip [0..] (reverse bs))
+        (zip @Int [0..] (reverse bs))
 
 parseInput :: Text -> [Instruction]
 parseInput input =

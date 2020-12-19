@@ -26,7 +26,6 @@ stopsAt (BusId i) (Timestamp t) = t `mod` i == 0
 main :: IO ()
 main = do
   input <- TIO.getContents
-  print (labelledBusIds . _inputBusIds $ parseInput input)
   print $ solvePart1 . parseInput $ input -- 161
   print $ solvePart2 . parseInput $ input -- 213890632230818
 
