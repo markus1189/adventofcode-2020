@@ -59,15 +59,15 @@ main :: IO ()
 main = do
   input <- TIO.getContents
   print $ solvePart1 . parseInput $ input
-  print $ solvePart2 . parseInput $ input
+  void $ traverse print $ solvePart2 . parseInput $ input
 
 solvePart1 :: Input -> Int
 solvePart1 (Input rules strings) = length $ filter (check p) (zip @Int [1..] strings)
   where p = toParser rules r0 <* Parsec.eof
         r0 = rules Map.! 0
 
-solvePart2 :: Input -> Int
-solvePart2 (Input originalRules strings) = length $ filter (check p) (zip @Int [1..] strings)
+solvePart2 :: Input -> _
+solvePart2 (Input originalRules strings) = filter (check p) (zip @Int [1..] strings)
   where p = toParser rules' r0 <* Parsec.eof
         r0 = buildRule8And11 (maximum $ map length strings)
         rules' = Map.delete 8 . Map.delete 11 $ originalRules

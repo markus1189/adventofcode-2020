@@ -10,6 +10,7 @@ let
       grid
       lens
       lens
+      monad-extras
       parsec
       pointedlist
       split
