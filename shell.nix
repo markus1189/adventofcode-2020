@@ -4,6 +4,7 @@ with pkgs;
 let
   myHaskellPackages = ps:
     with ps; [
+      array
       adjunctions
       comonad
       fgl
@@ -11,12 +12,15 @@ let
       lens
       lens
       monad-extras
+      monad-loops
       parsec
       pointedlist
       split
       tasty
       tasty-hspec
       text
+      unordered-containers
+      stm
     ];
   myGhc = haskellPackages.ghcWithHoogle myHaskellPackages;
   mkDay = n:
