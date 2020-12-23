@@ -11,8 +11,9 @@ import qualified Text.Parsec as Parsec
 main :: IO ()
 main = do
   input <- TIO.getContents
-  print $ solvePart1 . parseInput $ input
-  print $ solvePart2 . parseInput $ input
+  print  . parseInput $ input
+  print . solvePart1 . parseInput $ input
+  print . solvePart2 . parseInput $ input
 
 solvePart1 :: _ -> _
 solvePart1 _ = ()
