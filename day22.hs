@@ -1,33 +1,44 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 import           Control.Lens (preview, _Cons, to)
 import           Control.Lens.Operators
 import           Control.Lens.TH
 import           Data.Foldable (foldl')
-import           Data.Set (Set)
-import qualified Data.Set as Set
+import           Data.HashSet (HashSet)
+import qualified Data.HashSet as HashSet
+import           Data.Hashable (Hashable)
 import           Data.Text (Text)
 import qualified Data.Text.IO as TIO
+import           GHC.Generics (Generic)
 import           Text.Parsec (Parsec)
 import qualified Text.Parsec as Parsec
 
-newtype Card = Card Int deriving (Show, Eq, Ord)
+newtype Card = Card Int
+  deriving newtype (Show, Eq, Ord, Hashable)
 makePrisms ''Card
 
-newtype Deck = Deck [Card] deriving (Show, Eq, Ord)
+newtype Deck = Deck [Card]
+  deriving newtype (Show, Eq, Ord, Hashable)
 makePrisms ''Deck
 
 data Player = Player { _playerNumber :: Int
                      , _playerDeck :: Deck
-                     } deriving (Show, Eq, Ord)
+                     }
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass Hashable
 makeLenses ''Player
 
 data TurnResult = Win Player
                 | Continue (Player, Player)
-                deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass Hashable
 
 topCard :: Player -> Maybe (Card, Player)
 topCard p = maybeHeadTail <&> \case (c,cs) -> (c, p & playerDeck . _Deck .~ cs)
@@ -68,25 +79,25 @@ score :: Player -> Int
 score p = foldl' (+) 0 $ zipWith (*) (reverse (p ^.. playerDeck . _Deck . traverse . _Card)) [1..]
 
 solvePart2 :: (Player, Player) -> Int
-solvePart2 ps = score $ playRecursiveCombat Set.empty (1,1) ps
+solvePart2 ps = score $ playRecursiveCombat HashSet.empty (1,1) ps
 
 setupRecursiveConfig :: ((Card, Player), (Card, Player)) -> (Player, Player)
 setupRecursiveConfig ((Card p1v, p1), (Card p2v, p2)) =
   (p1 & playerDeck . _Deck %~ take p1v, p2 & playerDeck . _Deck %~ take p2v)
 
-playRecursiveCombat :: Set (Player, Player) -> (Int, Int) -> (Player, Player) -> Player
+playRecursiveCombat :: HashSet (Player, Player) -> (Int, Int) -> (Player, Player) -> Player
 playRecursiveCombat prevs (gameNr,roundNr) cur@(p1, p2) =
-  if cur `Set.member` prevs then p1 else
+  if cur `HashSet.member` prevs then p1 else
   case (,) <$> getTopCard p1 p2 <*> getTopCard p2 p1 of
   Left p -> p
   Right config@((cardP1, restP1), (cardP2, restP2)) ->
      if not (canRecurse config)
-     then playRecursiveCombat (Set.insert cur prevs) (gameNr, roundNr + 1) $ winByHighCard config
-     else let (Player num _) = playRecursiveCombat Set.empty (gameNr+1,1) (setupRecursiveConfig config)
+     then playRecursiveCombat (HashSet.insert cur prevs) (gameNr, roundNr + 1) $ winByHighCard config
+     else let (Player num _) = playRecursiveCombat HashSet.empty (gameNr+1,1) (setupRecursiveConfig config)
               nextConfig = if num == p1 ^. playerNumber
                            then let restP1' = putAtBottom [cardP1, cardP2] restP1 in (restP1', restP2)
                            else let restP2' = putAtBottom [cardP2, cardP1] restP2 in (restP1, restP2')
-          in playRecursiveCombat (Set.insert cur prevs) (gameNr, roundNr+1) nextConfig
+          in playRecursiveCombat (HashSet.insert cur prevs) (gameNr, roundNr+1) nextConfig
 
 canRecurse :: ((Card, Player), (Card, Player)) -> Bool
 canRecurse ((Card p1v, p1), (Card p2v, p2)) =
