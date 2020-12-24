@@ -4,7 +4,6 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
-import           Control.Parallel.Strategies (parMap, rseq)
 import           Data.Foldable (foldl')
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
@@ -62,7 +61,7 @@ countBlackTiles = HashMap.foldl' f 0
         f acc White = acc
 
 solvePart2 :: NonEmpty (NonEmpty Dir) -> Int
-solvePart2 = countBlackTiles . (!!200) . iterate step . buildMap
+solvePart2 = countBlackTiles . (!!100) . iterate step . buildMap
 
 buildMap :: NonEmpty (NonEmpty Dir) -> HashMap Coord Color
 buildMap = fmap intToColor
@@ -71,10 +70,10 @@ buildMap = fmap intToColor
          . fmap ((,1) . sconcat . fmap dirToCoord)
 
 neighbors :: Coord -> [Coord]
-neighbors baseCoord = parMap rseq ((baseCoord <>) . dirToCoord) [E .. ]
+neighbors baseCoord = map ((baseCoord <>) . dirToCoord) [E .. ]
 
 lookupNeighbors :: HashMap Coord Color -> Coord -> [Color]
-lookupNeighbors m = parMap rseq (\neighbor -> HashMap.findWithDefault White neighbor m) . neighbors
+lookupNeighbors m = map (\neighbor -> HashMap.findWithDefault White neighbor m) . neighbors
 
 applyRule1 :: Color -> [Color] -> Color
 applyRule1 Black nbs = if (||) <$> (==0) <*> (>2) $ length $ filter (==Black) nbs then White else Black
