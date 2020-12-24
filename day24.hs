@@ -1,18 +1,26 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
 import           Data.Foldable (foldl')
+import           Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
+import           Data.Hashable (Hashable)
 import           Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty
-import           Data.Map (Map)
-import qualified Data.Map as Map
 import           Data.Semigroup (sconcat)
 import           Data.Text (Text)
 import qualified Data.Text.IO as TIO
+import           GHC.Generics (Generic)
 import           Text.Parsec (Parsec)
 import qualified Text.Parsec as Parsec
 
-data Coord = Coord !Int !Int !Int deriving (Show, Eq, Ord)
+data Coord = Coord !Int !Int !Int
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass Hashable
+
 
 data Color = Black | White deriving (Show, Eq, Ord)
 
@@ -47,40 +55,39 @@ main = do
 solvePart1 :: NonEmpty (NonEmpty Dir) -> Int
 solvePart1 = countBlackTiles . buildMap
 
-countBlackTiles :: Map Coord Color -> Int
-countBlackTiles = Map.foldl' f 0
+countBlackTiles :: HashMap Coord Color -> Int
+countBlackTiles = HashMap.foldl' f 0
   where f acc Black = acc + 1
         f acc White = acc
 
 solvePart2 :: NonEmpty (NonEmpty Dir) -> Int
 solvePart2 = countBlackTiles . (!!100) . iterate step . buildMap
 
-buildMap :: NonEmpty (NonEmpty Dir) -> Map Coord Color
+buildMap :: NonEmpty (NonEmpty Dir) -> HashMap Coord Color
 buildMap = fmap intToColor
-         . Map.fromListWith (+)
+         . HashMap.fromListWith (+)
          . NonEmpty.toList
          . fmap ((,1) . sconcat . fmap dirToCoord)
 
 neighbors :: Coord -> [Coord]
 neighbors baseCoord = map ((baseCoord <>) . dirToCoord) [E .. ]
 
-lookupNeighbors :: Map Coord Color -> Coord -> [Color]
-lookupNeighbors m = map (\neighbor -> Map.findWithDefault White neighbor m)
-                  . neighbors
+lookupNeighbors :: HashMap Coord Color -> Coord -> [Color]
+lookupNeighbors m = map (\neighbor -> HashMap.findWithDefault White neighbor m) . neighbors
 
 applyRule1 :: Color -> [Color] -> Color
 applyRule1 Black nbs = if (||) <$> (==0) <*> (>2) $ length $ filter (==Black) nbs then White else Black
 applyRule1 White nbs = if (==2) $ length $ filter (==Black) nbs then Black else White
 
-step :: Map Coord Color -> Map Coord Color
-step m = Map.foldlWithKey' f Map.empty . pad $ m
+step :: HashMap Coord Color -> HashMap Coord Color
+step m = HashMap.foldlWithKey' f HashMap.empty . pad $ m
   where
-    f :: Map Coord Color -> Coord -> Color -> Map Coord Color
-    f acc k v = Map.insert k (applyRule1 v (lookupNeighbors m k)) acc
+    f :: HashMap Coord Color -> Coord -> Color -> HashMap Coord Color
+    f acc k v = HashMap.insert k (applyRule1 v (lookupNeighbors m k)) acc
 
-pad :: Map Coord Color -> Map Coord Color
-pad m = foldl' (flip (Map.alter f)) m cellsToCheck
-  where cellsToCheck = concatMap neighbors . Map.keys $ m
+pad :: HashMap Coord Color -> HashMap Coord Color
+pad m = foldl' (flip (HashMap.alter f)) m cellsToCheck
+  where cellsToCheck = concatMap neighbors . HashMap.keys . HashMap.filter (== Black) $ m
         f Nothing = Just White
         f x = x
 
