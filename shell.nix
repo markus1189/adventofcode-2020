@@ -25,7 +25,6 @@ let
       text
       unordered-containers
       stm
-      stm-linkedlist
     ];
   myGhc = haskellPackages.ghcWithHoogle myHaskellPackages;
   compileDay = n:
