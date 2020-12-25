@@ -36,5 +36,5 @@ let
     in writeScriptBin "d${n'}" ''
       ${myGhc}/bin/runhaskell --ghc-arg=-Wall day${n'}.hs
     '';
-  range = lib.range 1 24;
+  range = lib.range 1 25;
 in mkShell { buildInputs = [ myGhc ] ++ map mkDay range ++ map compileDay range; }
